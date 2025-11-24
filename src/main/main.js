@@ -25,10 +25,12 @@ if (process.platform === 'win32') {
     autoUpdater.requestHeaders = {
         'User-Agent': 'DiagTerm-Updater'
     };
-
+    
     if (!app.isPackaged) {
         autoUpdater.forceDevUpdateConfig = true;
     }
+    
+    autoUpdater.verifySignatureAndInstall = false;
 }
 
 function createWindow() {
@@ -1089,15 +1091,23 @@ autoUpdater.on('error', (err) => {
     console.error('Error in auto-updater:', err);
     
     const errorStr = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
+    const errorObj = err ? (err.rawInfo || err) : {};
     
-    if (errorStr.includes('not signed') || errorStr.includes('signature')) {
-        console.warn('⚠ Update file is not signed. This is expected without a code signing certificate.');
-        console.warn('   Windows will show a security warning, but the update can still be installed.');
+    if (errorStr.includes('not signed') || errorStr.includes('signature') || 
+        (errorObj.StatusMessage && errorObj.StatusMessage.includes('certificat'))) {
+        console.warn('⚠ Update file signature verification failed. This is expected with a self-signed certificate.');
+        console.warn('   The update is available but Windows requires manual approval.');
         
-        if (mainWindow) {
+        if (mainWindow && err && err.version) {
+            mainWindow.webContents.send('update-available', {
+                version: err.version,
+                requiresManualInstall: true,
+                message: 'Update available (self-signed certificate - manual installation required)'
+            });
+        } else if (mainWindow) {
             mainWindow.webContents.send('update-error', 
-                'Update available but not signed. Windows may show a security warning during installation. ' +
-                'You can still install it by clicking "More info" and then "Run anyway".');
+                'Update available but requires manual installation due to self-signed certificate. ' +
+                'Windows will show a security warning - click "More info" then "Run anyway" to install.');
         }
     } else {
         if (mainWindow) {
