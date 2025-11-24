@@ -2210,12 +2210,14 @@ if (window.electronAPI) {
 
     if (window.electronAPI.onUpdateAvailable) {
         window.electronAPI.onUpdateAvailable((info) => {
+            console.log('Update available event received:', info);
             updateInfo = info;
             const titleEl = document.getElementById('update-modal-title');
             const messageEl = document.getElementById('update-message');
             const downloadBtn = document.getElementById('update-download-btn');
             const releaseNotesEl = document.getElementById('update-release-notes');
             const releaseNotesContentEl = document.getElementById('update-release-notes-content');
+            const progressContainer = document.getElementById('update-progress-container');
 
             if (titleEl) {
                 titleEl.textContent = 'Update Available';
@@ -2225,6 +2227,11 @@ if (window.electronAPI) {
             }
             if (downloadBtn) {
                 downloadBtn.style.display = 'inline-block';
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download Update';
+            }
+            if (progressContainer) {
+                progressContainer.style.display = 'none';
             }
             if (info.releaseNotes && releaseNotesEl && releaseNotesContentEl) {
                 releaseNotesEl.style.display = 'block';
