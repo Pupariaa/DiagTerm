@@ -2219,7 +2219,7 @@ if (window.electronAPI) {
                 titleEl.textContent = 'Update Available';
             }
             if (messageEl) {
-                messageEl.textContent = `A new version (${info.version}) is available. Your current version is ${appVersion}.`;
+                messageEl.textContent = `A new version (${info.version}) is available.`;
             }
             if (downloadBtn) {
                 downloadBtn.style.display = 'inline-block';
@@ -2239,7 +2239,7 @@ if (window.electronAPI) {
 
     if (window.electronAPI.onUpdateNotAvailable) {
         window.electronAPI.onUpdateNotAvailable((info) => {
-            alert(`You are running the latest version (${appVersion}).`);
+            closeUpdateModal();
         });
     }
 
