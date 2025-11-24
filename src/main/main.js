@@ -25,7 +25,7 @@ if (process.platform === 'win32') {
     autoUpdater.requestHeaders = {
         'User-Agent': 'DiagTerm-Updater'
     };
-    
+
     if (!app.isPackaged) {
         autoUpdater.forceDevUpdateConfig = true;
     }
@@ -1087,9 +1087,22 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
     console.error('Error in auto-updater:', err);
-    const errorMessage = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
-    if (mainWindow) {
-        mainWindow.webContents.send('update-error', errorMessage);
+    
+    const errorStr = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
+    
+    if (errorStr.includes('not signed') || errorStr.includes('signature')) {
+        console.warn('⚠ Update file is not signed. This is expected without a code signing certificate.');
+        console.warn('   Windows will show a security warning, but the update can still be installed.');
+        
+        if (mainWindow) {
+            mainWindow.webContents.send('update-error', 
+                'Update available but not signed. Windows may show a security warning during installation. ' +
+                'You can still install it by clicking "More info" and then "Run anyway".');
+        }
+    } else {
+        if (mainWindow) {
+            mainWindow.webContents.send('update-error', errorStr);
+        }
     }
 });
 
