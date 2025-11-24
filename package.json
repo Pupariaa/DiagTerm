@@ -1,6 +1,6 @@
 {
   "name": "diagterm",
-  "version": "0.1.19",
+  "version": "0.1.1",
   "description": "UART Terminal with RX/TX Timeline",
   "main": "src/main/main.js",
   "scripts": {
