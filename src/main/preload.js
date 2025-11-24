@@ -73,6 +73,86 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   readFile: async (filePath) => {
     return await ipcRenderer.invoke('read-file', filePath);
+  },
+
+  resetPort: async (portPath) => {
+    return await ipcRenderer.invoke('reset-port', portPath);
+  },
+
+  onPortDisconnected: (callback) => {
+    ipcRenderer.on('port-disconnected', (event, portPath) => {
+      callback(portPath);
+    });
+  },
+
+  onPortReconnected: (callback) => {
+    ipcRenderer.on('port-reconnected', (event, portPath) => {
+      callback(portPath);
+    });
+  },
+
+  onPortError: (callback) => {
+    ipcRenderer.on('port-error', (event, portPath, error) => {
+      callback(portPath, error);
+    });
+  },
+
+  onPortClosed: (callback) => {
+    ipcRenderer.on('port-closed', (event, portPath) => {
+      callback(portPath);
+    });
+  },
+
+  checkForUpdates: async () => {
+    return await ipcRenderer.invoke('check-for-updates');
+  },
+
+  downloadUpdate: async () => {
+    return await ipcRenderer.invoke('download-update');
+  },
+
+  installUpdate: async () => {
+    return await ipcRenderer.invoke('install-update');
+  },
+
+  getAppVersion: async () => {
+    return await ipcRenderer.invoke('get-app-version');
+  },
+
+  onUpdateChecking: (callback) => {
+    ipcRenderer.on('update-checking', () => {
+      callback();
+    });
+  },
+
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, info) => {
+      callback(info);
+    });
+  },
+
+  onUpdateNotAvailable: (callback) => {
+    ipcRenderer.on('update-not-available', (event, info) => {
+      callback(info);
+    });
+  },
+
+  onUpdateError: (callback) => {
+    ipcRenderer.on('update-error', (event, error) => {
+      callback(error);
+    });
+  },
+
+  onUpdateDownloadProgress: (callback) => {
+    ipcRenderer.on('update-download-progress', (event, progress) => {
+      callback(progress);
+    });
+  },
+
+  onUpdateDownloaded: (callback) => {
+    ipcRenderer.on('update-downloaded', (event, info) => {
+      callback(info);
+    });
   }
 });
 
