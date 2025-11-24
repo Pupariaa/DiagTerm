@@ -129,12 +129,12 @@ The application supports various USB-Serial converters with automatic detection:
 
 ### Pre-built Releases
 
-Download the latest version from the [releases page](https://github.com/your-repo/releases) or check for updates directly in the application.
+Download the latest version from the [releases page](https://github.com/Pupariaa/DiagTerm/releases) or check for updates directly in the application.
 
 ### From Source
 
 ```bash
-git clone https://github.com/your-repo/DiagTerm.git
+git clone https://github.com/Pupariaa/DiagTerm.git
 cd DiagTerm
 npm install
 npm run rebuild
