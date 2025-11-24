@@ -2149,9 +2149,16 @@ async function downloadUpdate() {
         
         if (!result.success && !result.warning) {
             console.error('Download failed, trying direct download...');
+            let downloadUrl = null;
             if (updateInfo && updateInfo.path) {
-                console.log('Opening direct download URL:', updateInfo.path);
-                window.open(updateInfo.path, '_blank');
+                downloadUrl = updateInfo.path;
+            } else if (updateInfo && updateInfo.version) {
+                downloadUrl = `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version}.exe`;
+            }
+            
+            if (downloadUrl) {
+                console.log('Opening direct download URL:', downloadUrl);
+                window.open(downloadUrl, '_blank');
                 if (downloadBtn) {
                     downloadBtn.disabled = false;
                     downloadBtn.textContent = 'Download Update';
@@ -2172,9 +2179,16 @@ async function downloadUpdate() {
         }
     } catch (error) {
         console.error('Download error, trying direct download...', error);
+        let downloadUrl = null;
         if (updateInfo && updateInfo.path) {
-            console.log('Opening direct download URL:', updateInfo.path);
-            window.open(updateInfo.path, '_blank');
+            downloadUrl = updateInfo.path;
+        } else if (updateInfo && updateInfo.version) {
+            downloadUrl = `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version}.exe`;
+        }
+        
+        if (downloadUrl) {
+            console.log('Opening direct download URL:', downloadUrl);
+            window.open(downloadUrl, '_blank');
             if (downloadBtn) {
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = 'Download Update';
