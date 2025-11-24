@@ -149,7 +149,7 @@ ipcMain.handle('open-port', async (event, portPath, baudRate) => {
                     baudRate: parseInt(baudRate),
                     wasOpen: true
                 };
-                
+
                 openPorts.set(portPath, portInfo);
                 portStates.set(portPath, {
                     baudRate: parseInt(baudRate),
@@ -162,7 +162,7 @@ ipcMain.handle('open-port', async (event, portPath, baudRate) => {
                     if (win) {
                         win.webContents.send('port-error', portPath, err.message);
                     }
-                    
+
                     if (err.message.includes('disconnected') || err.message.includes('not found') || err.message.includes('Access denied') || err.message.includes('cannot open')) {
                         openPorts.delete(portPath);
                         const state = portStates.get(portPath);
@@ -248,7 +248,7 @@ ipcMain.handle('reset-port', async (event, portPath) => {
                         resolve({ success: false, error: err.message });
                         return;
                     }
-                    
+
                     setTimeout(() => {
                         portData.port.set({ dtr: true, rts: true }, (err2) => {
                             if (err2) {
@@ -336,14 +336,14 @@ ipcMain.handle('write-port', async (event, portPath, data) => {
 
 function checkPortsStatus() {
     if (openPorts.size === 0) return;
-    
+
     SerialPort.list().then(portList => {
         const availablePaths = new Set(portList.map(p => p.path));
         const allWindows = BrowserWindow.getAllWindows();
-        
+
         for (const [portPath, portData] of openPorts.entries()) {
             let isDisconnected = false;
-            
+
             if (!availablePaths.has(portPath)) {
                 console.log(`Port ${portPath} not in available ports list`);
                 isDisconnected = true;
@@ -358,23 +358,23 @@ function checkPortsStatus() {
                     isDisconnected = true;
                 }
             }
-            
+
             if (isDisconnected) {
                 console.log(`Port ${portPath} disconnected or closed`);
                 try {
                     if (portData.port && portData.port.isOpen) {
-                        portData.port.close(() => {});
+                        portData.port.close(() => { });
                     }
                 } catch (closeError) {
                     console.error('Error closing port:', closeError);
                 }
-                
+
                 openPorts.delete(portPath);
                 const state = portStates.get(portPath);
                 if (state) {
                     state.wasOpen = true;
                 }
-                
+
                 allWindows.forEach(win => {
                     win.webContents.send('port-disconnected', portPath);
                 });
@@ -387,7 +387,7 @@ function checkPortsStatus() {
 
 app.whenReady().then(() => {
     createWindow();
-    
+
     portCheckInterval = setInterval(checkPortsStatus, 2000);
 
     app.on('activate', () => {
@@ -1045,6 +1045,71 @@ ipcMain.handle('window-close', (event) => {
 ipcMain.handle('get-app-version', () => {
     const version = app.getVersion();
     return { version: version };
+});
+
+autoUpdater.on('checking-for-update', () => {
+    console.log('Checking for update...');
+    if (mainWindow) {
+        mainWindow.webContents.send('update-checking');
+    }
+});
+
+autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info);
+    if (mainWindow) {
+        mainWindow.webContents.send('update-available', info);
+    }
+});
+
+autoUpdater.on('update-not-available', (info) => {
+    console.log('Update not available:', info);
+    if (mainWindow) {
+        mainWindow.webContents.send('update-not-available', info);
+    }
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('Error in auto-updater:', err);
+    if (mainWindow) {
+        mainWindow.webContents.send('update-error', err.message);
+    }
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+    if (mainWindow) {
+        mainWindow.webContents.send('update-download-progress', progressObj);
+    }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info);
+    if (mainWindow) {
+        mainWindow.webContents.send('update-downloaded', info);
+    }
+});
+
+ipcMain.handle('check-for-updates', async () => {
+    try {
+        await autoUpdater.checkForUpdates();
+        return { success: true };
+    } catch (error) {
+        console.error('Error checking for updates:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('download-update', async () => {
+    try {
+        await autoUpdater.downloadUpdate();
+        return { success: true };
+    } catch (error) {
+        console.error('Error downloading update:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('install-update', () => {
+    autoUpdater.quitAndInstall();
 });
 
 app.on('window-all-closed', () => {
