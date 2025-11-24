@@ -1,6 +1,6 @@
 {
   "name": "diagterm",
-  "version": "0.1.2",
+  "version": "0.1.9",
   "description": "UART Terminal with RX/TX Timeline",
   "main": "src/main/main.js",
   "scripts": {
@@ -16,8 +16,8 @@
     "deploy": "node scripts/deploy.js",
     "deploy:bugfix": "node scripts/deploy.js --bugfix",
     "deploy:release": "node scripts/deploy.js --release",
-    "deploy:win": "node scripts/deploy.js --win",
-    "deploy:all": "node scripts/deploy.js --all"
+    "deploy:win": "node scripts/deploy.js --bugfix --win",
+    "deploy:all": "node scripts/deploy.js --bugfix --all"
   },
   "keywords": [
     "uart",
