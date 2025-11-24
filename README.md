@@ -34,14 +34,14 @@ This visual feedback helps you understand the communication pattern at a glance.
 Flash firmware to your devices directly from the application. Supports ESP32, ESP8266, and Arduino boards with automatic bootloader mode entry.
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763985957-s3.png" alt="Multi-Flash Dialog">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763985957-s3.png" alt="Multi-Flash Dialog">
 </p>
 
 
 The multi-flash feature lets you flash multiple devices at once. Each port can have its own USB-Serial converter selection, which is useful when working with different board generations.
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763985957-s4.png" alt="Multi-Flash in Progress">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763985957-s4.png" alt="Multi-Flash in Progress">
 </p>
 
 ### Message Analysis
@@ -49,7 +49,7 @@ The multi-flash feature lets you flash multiple devices at once. Each port can h
 Right-click on any message in the terminal to get a detailed analysis:
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763986111-s9.png" alt="Message Analysis">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763986111-s9.png" alt="Message Analysis">
 </p>
 
 
@@ -67,7 +67,7 @@ The analysis shows:
 Compare two log files side by side to spot differences:
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763985957-s2.png" alt="Log Comparison">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763985957-s2.png" alt="Log Comparison">
 </p>
 
 Useful for debugging communication issues or verifying firmware behavior across different versions.
@@ -94,7 +94,7 @@ Export your terminal data in multiple formats:
 
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763986052-s8.png" alt="Line Ending Options">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763986052-s8.png" alt="Line Ending Options">
 </p>
 
 ## Supported Devices
@@ -139,7 +139,7 @@ The application supports various USB-Serial converters with automatic detection:
 - Generic converters
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763986052-s7.png" alt="Available Ports">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763986052-s7.png" alt="Available Ports">
 </p>
 
 ## Installation
