@@ -1,0 +1,22 @@
+{
+  "name": "diagterm",
+  "version": "1.0.0",
+  "description": "UART Terminal with RX/TX Timeline",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w serialport"
+  },
+  "keywords": ["uart", "serial", "terminal"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "@serialport/parser-readline": "^12.0.0"
+  }
+}
+
