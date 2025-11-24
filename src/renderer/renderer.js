@@ -2131,34 +2131,64 @@ async function downloadUpdate() {
     }
 
     const downloadBtn = document.getElementById('update-download-btn');
+    const progressContainer = document.getElementById('update-progress-container');
+    
     if (downloadBtn) {
         downloadBtn.disabled = true;
         downloadBtn.textContent = 'Downloading...';
     }
 
-    const progressContainer = document.getElementById('update-progress-container');
     if (progressContainer) {
         progressContainer.style.display = 'block';
     }
 
     try {
-        console.log('Starting download...');
+        console.log('Starting download via electron-updater...');
         const result = await window.electronAPI.downloadUpdate();
         console.log('Download result:', result);
-        if (!result.success) {
-            console.error('Download failed:', result.error);
-            alert(`Error downloading update: ${result.error}`);
+        
+        if (!result.success && !result.warning) {
+            console.error('Download failed, trying direct download...');
+            if (updateInfo && updateInfo.path) {
+                console.log('Opening direct download URL:', updateInfo.path);
+                window.open(updateInfo.path, '_blank');
+                if (downloadBtn) {
+                    downloadBtn.disabled = false;
+                    downloadBtn.textContent = 'Download Update';
+                }
+                if (progressContainer) {
+                    progressContainer.style.display = 'none';
+                }
+                alert('Opening download in browser. Please install the update manually.');
+            } else {
+                alert(`Error downloading update: ${result.error}`);
+                if (downloadBtn) {
+                    downloadBtn.disabled = false;
+                    downloadBtn.textContent = 'Download Update';
+                }
+            }
+        } else if (result.warning) {
+            console.log('Download started with warning:', result.warning);
+        }
+    } catch (error) {
+        console.error('Download error, trying direct download...', error);
+        if (updateInfo && updateInfo.path) {
+            console.log('Opening direct download URL:', updateInfo.path);
+            window.open(updateInfo.path, '_blank');
             if (downloadBtn) {
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = 'Download Update';
             }
-        }
-    } catch (error) {
-        console.error('Download error:', error);
-        alert(`Error downloading update: ${error.message}`);
-        if (downloadBtn) {
-            downloadBtn.disabled = false;
-            downloadBtn.textContent = 'Download Update';
+            if (progressContainer) {
+                progressContainer.style.display = 'none';
+            }
+            alert('Opening download in browser. Please install the update manually.');
+        } else {
+            alert(`Error downloading update: ${error.message}`);
+            if (downloadBtn) {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download Update';
+            }
         }
     }
 }
