@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+*.log
+dist/
+build/
+*.exe
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+out/
+.cache/
