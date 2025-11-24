@@ -2231,8 +2231,43 @@ if (window.electronAPI) {
     if (window.electronAPI.onUpdateError) {
         window.electronAPI.onUpdateError((error) => {
             const errorMessage = typeof error === 'string' ? error : (error?.message || error?.toString() || 'Unknown error');
-            alert(`Update error: ${errorMessage}`);
-            closeUpdateModal();
+            const errorLower = errorMessage.toLowerCase();
+            
+            if (errorLower.includes('not signed') || errorLower.includes('signature') || 
+                errorLower.includes('certificat') || errorLower.includes('certificate')) {
+                const titleEl = document.getElementById('update-modal-title');
+                const messageEl = document.getElementById('update-message');
+                const downloadBtn = document.getElementById('update-download-btn');
+                
+                if (titleEl) {
+                    titleEl.textContent = 'Update Available (Manual Installation Required)';
+                }
+                if (messageEl) {
+                    messageEl.innerHTML = `A new version is available, but it requires manual installation due to a self-signed certificate.<br><br>` +
+                        `Windows will show a security warning. To install:<br>` +
+                        `1. Click the download button below<br>` +
+                        `2. When Windows shows a warning, click "More info"<br>` +
+                        `3. Then click "Run anyway"`;
+                }
+                if (downloadBtn) {
+                    downloadBtn.style.display = 'inline-block';
+                    downloadBtn.textContent = 'Download Update';
+                    downloadBtn.onclick = () => {
+                        if (updateInfo && updateInfo.path) {
+                            window.electronAPI.downloadUpdate().catch(err => {
+                                const downloadUrl = updateInfo.path || `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version || 'latest'}.exe`;
+                                window.open(downloadUrl, '_blank');
+                            });
+                        } else {
+                            window.open('https://techalchemy.fr/diagterm/update/', '_blank');
+                        }
+                    };
+                }
+                openUpdateModal();
+            } else {
+                alert(`Update error: ${errorMessage}`);
+                closeUpdateModal();
+            }
         });
     }
 
