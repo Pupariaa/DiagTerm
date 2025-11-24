@@ -2,6 +2,29 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+function findOpenSSL() {
+    const commonPaths = [
+        'openssl',
+        'C:\\Program Files\\OpenSSL-Win64\\bin\\openssl.exe',
+        'C:\\Program Files\\OpenSSL-Win32\\bin\\openssl.exe',
+        'C:\\OpenSSL-Win64\\bin\\openssl.exe',
+        'C:\\OpenSSL-Win32\\bin\\openssl.exe',
+        'C:\\Program Files (x86)\\OpenSSL-Win64\\bin\\openssl.exe',
+        'C:\\Program Files (x86)\\OpenSSL-Win32\\bin\\openssl.exe'
+    ];
+    
+    for (const opensslPath of commonPaths) {
+        try {
+            execSync(`"${opensslPath}" version`, { stdio: 'ignore' });
+            return opensslPath;
+        } catch (e) {
+            continue;
+        }
+    }
+    
+    return null;
+}
+
 const certDir = path.join(__dirname, '../certificates');
 const certPath = path.join(certDir, 'diagterm-cert.pfx');
 const certKeyPath = path.join(certDir, 'diagterm-cert.key');
@@ -18,16 +41,31 @@ if (fs.existsSync(certPath)) {
     process.exit(0);
 }
 
+console.log('Looking for OpenSSL...');
+const openssl = findOpenSSL();
+
+if (!openssl) {
+    console.error('\n✗ OpenSSL not found!');
+    console.error('\nPlease install OpenSSL from: https://slproweb.com/products/Win32OpenSSL.html');
+    console.error('Or add OpenSSL to your PATH.');
+    console.error('\nCommon installation paths:');
+    console.error('  - C:\\Program Files\\OpenSSL-Win64\\bin');
+    console.error('  - C:\\OpenSSL-Win64\\bin');
+    process.exit(1);
+}
+
+console.log(`✓ Found OpenSSL: ${openssl}\n`);
+
 console.log('Generating self-signed code signing certificate...');
 console.log('This may take a few moments...\n');
 
 try {
-    const opensslCommand = `openssl req -x509 -newkey rsa:4096 -keyout "${certKeyPath}" -out "${certCrtPath}" -days 3650 -nodes -subj "/CN=Techalchemy/O=Techalchemy/C=FR"`;
+    const opensslCommand = `"${openssl}" req -x509 -newkey rsa:4096 -keyout "${certKeyPath}" -out "${certCrtPath}" -days 3650 -nodes -subj "/CN=Techalchemy/O=Techalchemy/C=FR"`;
     
     execSync(opensslCommand, { stdio: 'inherit' });
     
     console.log('\nConverting to PFX format...');
-    const pfxCommand = `openssl pkcs12 -export -out "${certPath}" -inkey "${certKeyPath}" -in "${certCrtPath}" -password pass:diagterm123 -name "DiagTerm Code Signing"`;
+    const pfxCommand = `"${openssl}" pkcs12 -export -out "${certPath}" -inkey "${certKeyPath}" -in "${certCrtPath}" -password pass:diagterm123 -name "DiagTerm Code Signing"`;
     
     execSync(pfxCommand, { stdio: 'inherit' });
     
@@ -45,8 +83,6 @@ try {
     
 } catch (error) {
     console.error('\n✗ Error generating certificate:', error.message);
-    console.error('\nMake sure OpenSSL is installed and available in your PATH.');
-    console.error('You can download it from: https://slproweb.com/products/Win32OpenSSL.html');
     process.exit(1);
 }
 
