@@ -2142,12 +2142,24 @@ async function downloadUpdate() {
     }
 
     try {
+        console.log('Starting download...');
         const result = await window.electronAPI.downloadUpdate();
+        console.log('Download result:', result);
         if (!result.success) {
+            console.error('Download failed:', result.error);
             alert(`Error downloading update: ${result.error}`);
+            if (downloadBtn) {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download Update';
+            }
         }
     } catch (error) {
+        console.error('Download error:', error);
         alert(`Error downloading update: ${error.message}`);
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.textContent = 'Download Update';
+        }
     }
 }
 

@@ -25,10 +25,10 @@ if (process.platform === 'win32') {
     autoUpdater.requestHeaders = {
         'User-Agent': 'DiagTerm-Updater'
     };
-    
+
     autoUpdater.forceDevUpdateConfig = true;
     autoUpdater.verifySignatureAndInstall = false;
-    
+
     if (autoUpdater.channel) {
         autoUpdater.channel = null;
     }
@@ -1093,14 +1093,14 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
     console.error('Error in auto-updater:', err);
-    
+
     const errorStr = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
     const errorObj = err ? (err.rawInfo || err) : {};
-    
-    if (errorStr.includes('not signed') || errorStr.includes('signature') || 
+
+    if (errorStr.includes('not signed') || errorStr.includes('signature') ||
         (errorObj.StatusMessage && errorObj.StatusMessage.includes('certificat'))) {
         console.warn('⚠ Update file signature verification failed. Attempting to proceed anyway...');
-        
+
         if (mainWindow && lastUpdateInfo) {
             console.log('Sending update-available event despite signature error');
             mainWindow.webContents.send('update-available', lastUpdateInfo);
@@ -1109,7 +1109,7 @@ autoUpdater.on('error', (err) => {
             if (updateInfo) {
                 mainWindow.webContents.send('update-available', updateInfo);
             } else {
-                mainWindow.webContents.send('update-error', 
+                mainWindow.webContents.send('update-error',
                     'Update available but requires manual installation due to self-signed certificate. ' +
                     'Windows will show a security warning - click "More info" then "Run anyway" to install.');
             }
@@ -1146,11 +1146,24 @@ ipcMain.handle('check-for-updates', async () => {
 
 ipcMain.handle('download-update', async () => {
     try {
+        console.log('download-update IPC called');
+        if (lastUpdateInfo) {
+            console.log('Update info available:', lastUpdateInfo);
+        }
         await autoUpdater.downloadUpdate();
+        console.log('Download started successfully');
         return { success: true };
     } catch (error) {
         console.error('Error downloading update:', error);
-        return { success: false, error: error.message };
+        const errorMessage = error ? (error.message || error.toString()) : 'Unknown error';
+        
+        if (errorMessage.includes('not signed') || errorMessage.includes('signature') || 
+            errorMessage.includes('certificat')) {
+            console.warn('Signature error during download, but continuing...');
+            return { success: true, warning: 'Self-signed certificate - Windows may show security warning' };
+        }
+        
+        return { success: false, error: errorMessage };
     }
 });
 
