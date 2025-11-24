@@ -1043,7 +1043,8 @@ ipcMain.handle('window-close', (event) => {
 });
 
 ipcMain.handle('get-app-version', () => {
-    return { version: app.getVersion() };
+    const version = app.getVersion();
+    return { version: version };
 });
 
 app.on('window-all-closed', () => {

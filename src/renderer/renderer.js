@@ -2052,7 +2052,7 @@ function convertToLaTeX(lines) {
     return tex;
 }
 
-let appVersion = '0.1.0';
+let appVersion = null;
 
 async function loadAppVersion() {
     try {
@@ -2060,10 +2060,21 @@ async function loadAppVersion() {
             const versionInfo = await window.electronAPI.getAppVersion();
             if (versionInfo && versionInfo.version) {
                 appVersion = versionInfo.version;
+            } else {
+                console.error('Invalid version info:', versionInfo);
+                appVersion = 'Unknown';
             }
+        } else {
+            console.error('electronAPI.getAppVersion not available');
+            appVersion = 'Unknown';
         }
     } catch (error) {
         console.error('Error loading app version:', error);
+        appVersion = 'Unknown';
+    }
+    
+    if (!appVersion) {
+        appVersion = 'Unknown';
     }
     
     const titleElement = document.getElementById('app-version-title');
