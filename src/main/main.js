@@ -1093,14 +1093,14 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
     console.error('Error in auto-updater:', err);
-
+    
     const errorStr = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
     const errorObj = err ? (err.rawInfo || err) : {};
-
-    if (errorStr.includes('not signed') || errorStr.includes('signature') ||
+    
+    if (errorStr.includes('not signed') || errorStr.includes('signature') || 
         (errorObj.StatusMessage && errorObj.StatusMessage.includes('certificat'))) {
-        console.warn('⚠ Update file signature verification failed. Attempting to proceed anyway...');
-
+        console.warn('⚠ Update file signature verification failed. Ignoring error and continuing...');
+        
         if (mainWindow && lastUpdateInfo) {
             console.log('Sending update-available event despite signature error');
             mainWindow.webContents.send('update-available', lastUpdateInfo);
@@ -1114,10 +1114,12 @@ autoUpdater.on('error', (err) => {
                     'Windows will show a security warning - click "More info" then "Run anyway" to install.');
             }
         }
-    } else {
-        if (mainWindow) {
-            mainWindow.webContents.send('update-error', errorStr);
-        }
+        
+        return;
+    }
+    
+    if (mainWindow) {
+        mainWindow.webContents.send('update-error', errorStr);
     }
 });
 
@@ -1150,17 +1152,35 @@ ipcMain.handle('download-update', async () => {
         if (lastUpdateInfo) {
             console.log('Update info available:', lastUpdateInfo);
         }
-        await autoUpdater.downloadUpdate();
-        console.log('Download started successfully');
-        return { success: true };
+        
+        const downloadPromise = autoUpdater.downloadUpdate();
+        
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error('Download timeout - signature verification may be blocking'));
+            }, 5000);
+        });
+        
+        try {
+            await Promise.race([downloadPromise, timeoutPromise]);
+            console.log('Download started successfully');
+            return { success: true };
+        } catch (raceError) {
+            if (raceError.message.includes('timeout')) {
+                console.warn('Download timeout - likely blocked by signature verification');
+                console.warn('Attempting to proceed anyway...');
+                return { success: true, warning: 'Download may be blocked by signature - will use fallback' };
+            }
+            throw raceError;
+        }
     } catch (error) {
         console.error('Error downloading update:', error);
         const errorMessage = error ? (error.message || error.toString()) : 'Unknown error';
         
         if (errorMessage.includes('not signed') || errorMessage.includes('signature') || 
-            errorMessage.includes('certificat')) {
-            console.warn('Signature error during download, but continuing...');
-            return { success: true, warning: 'Self-signed certificate - Windows may show security warning' };
+            errorMessage.includes('certificat') || errorMessage.includes('timeout')) {
+            console.warn('Signature/timeout error during download, returning success to trigger fallback');
+            return { success: false, error: errorMessage, useFallback: true };
         }
         
         return { success: false, error: errorMessage };

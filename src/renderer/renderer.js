@@ -2147,8 +2147,8 @@ async function downloadUpdate() {
         const result = await window.electronAPI.downloadUpdate();
         console.log('Download result:', result);
         
-        if (!result.success && !result.warning) {
-            console.error('Download failed, trying direct download...');
+        if (!result.success || result.useFallback) {
+            console.error('Download failed or blocked, using direct download...');
             let downloadUrl = null;
             if (updateInfo && updateInfo.path) {
                 downloadUrl = updateInfo.path;
@@ -2167,14 +2167,18 @@ async function downloadUpdate() {
                     progressContainer.style.display = 'none';
                 }
                 alert('Opening download in browser. Please install the update manually.');
+                return;
             } else {
-                alert(`Error downloading update: ${result.error}`);
+                alert(`Error downloading update: ${result.error || 'Unknown error'}`);
                 if (downloadBtn) {
                     downloadBtn.disabled = false;
                     downloadBtn.textContent = 'Download Update';
                 }
+                return;
             }
-        } else if (result.warning) {
+        }
+        
+        if (result.warning) {
             console.log('Download started with warning:', result.warning);
         }
     } catch (error) {
