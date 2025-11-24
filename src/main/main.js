@@ -1110,9 +1110,10 @@ autoUpdater.on('error', (err) => {
                     message: 'Update available (self-signed certificate - manual installation required)'
                 });
             } else {
-            mainWindow.webContents.send('update-error', 
-                'Update available but requires manual installation due to self-signed certificate. ' +
-                'Windows will show a security warning - click "More info" then "Run anyway" to install.');
+                mainWindow.webContents.send('update-error', 
+                    'Update available but requires manual installation due to self-signed certificate. ' +
+                    'Windows will show a security warning - click "More info" then "Run anyway" to install.');
+            }
         }
     } else {
         if (mainWindow) {
