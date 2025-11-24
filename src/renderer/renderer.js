@@ -2125,90 +2125,38 @@ async function checkForUpdates() {
 }
 
 async function downloadUpdate() {
-    if (!window.electronAPI || !window.electronAPI.downloadUpdate) {
-        alert('Update system not available');
-        return;
-    }
-
     const downloadBtn = document.getElementById('update-download-btn');
     const progressContainer = document.getElementById('update-progress-container');
     
+    let downloadUrl = null;
+    if (updateInfo && updateInfo.path) {
+        downloadUrl = updateInfo.path;
+    } else if (updateInfo && updateInfo.version) {
+        downloadUrl = `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version}.exe`;
+    }
+    
+    if (!downloadUrl) {
+        alert('Update information not available');
+        return;
+    }
+    
     if (downloadBtn) {
         downloadBtn.disabled = true;
-        downloadBtn.textContent = 'Downloading...';
+        downloadBtn.textContent = 'Opening download...';
     }
-
+    
+    console.log('Opening direct download URL:', downloadUrl);
+    window.open(downloadUrl, '_blank');
+    
+    if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download Update';
+    }
     if (progressContainer) {
-        progressContainer.style.display = 'block';
+        progressContainer.style.display = 'none';
     }
-
-    try {
-        console.log('Starting download via electron-updater...');
-        const result = await window.electronAPI.downloadUpdate();
-        console.log('Download result:', result);
-        
-        if (!result.success || result.useFallback) {
-            console.error('Download failed or blocked, using direct download...');
-            let downloadUrl = null;
-            if (updateInfo && updateInfo.path) {
-                downloadUrl = updateInfo.path;
-            } else if (updateInfo && updateInfo.version) {
-                downloadUrl = `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version}.exe`;
-            }
-            
-            if (downloadUrl) {
-                console.log('Opening direct download URL:', downloadUrl);
-                window.open(downloadUrl, '_blank');
-                if (downloadBtn) {
-                    downloadBtn.disabled = false;
-                    downloadBtn.textContent = 'Download Update';
-                }
-                if (progressContainer) {
-                    progressContainer.style.display = 'none';
-                }
-                alert('Opening download in browser. Please install the update manually.');
-                return;
-            } else {
-                alert(`Error downloading update: ${result.error || 'Unknown error'}`);
-                if (downloadBtn) {
-                    downloadBtn.disabled = false;
-                    downloadBtn.textContent = 'Download Update';
-                }
-                return;
-            }
-        }
-        
-        if (result.warning) {
-            console.log('Download started with warning:', result.warning);
-        }
-    } catch (error) {
-        console.error('Download error, trying direct download...', error);
-        let downloadUrl = null;
-        if (updateInfo && updateInfo.path) {
-            downloadUrl = updateInfo.path;
-        } else if (updateInfo && updateInfo.version) {
-            downloadUrl = `https://techalchemy.fr/diagterm/update/DiagTerm Setup ${updateInfo.version}.exe`;
-        }
-        
-        if (downloadUrl) {
-            console.log('Opening direct download URL:', downloadUrl);
-            window.open(downloadUrl, '_blank');
-            if (downloadBtn) {
-                downloadBtn.disabled = false;
-                downloadBtn.textContent = 'Download Update';
-            }
-            if (progressContainer) {
-                progressContainer.style.display = 'none';
-            }
-            alert('Opening download in browser. Please install the update manually.');
-        } else {
-            alert(`Error downloading update: ${error.message}`);
-            if (downloadBtn) {
-                downloadBtn.disabled = false;
-                downloadBtn.textContent = 'Download Update';
-            }
-        }
-    }
+    
+    alert('Download opened in browser. After downloading, run the installer. Windows may show a security warning - click "More info" then "Run anyway".');
 }
 
 async function installUpdate() {
