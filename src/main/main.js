@@ -387,6 +387,13 @@ function checkPortsStatus() {
 
 app.whenReady().then(() => {
     createWindow();
+    
+    setTimeout(() => {
+        console.log('Checking for updates on startup...');
+        autoUpdater.checkForUpdates().catch(err => {
+            console.error('Error checking for updates on startup:', err);
+        });
+    }, 3000);
 
     portCheckInterval = setInterval(checkPortsStatus, 2000);
 
