@@ -3,7 +3,7 @@
 A powerful UART terminal application for debugging and communicating with microcontrollers, with built-in binary flashing capabilities.
 
 <p align="center">
-  <img src="https://www.noelshack.com/2025-48-1-1763985957-s1.png" alt="Main Interface">
+  <img src="https://image.noelshack.com/fichiers/2025/48/1/1763985957-s1.png" alt="Main Interface">
 </p>
 
 ## What is DiagTerm?
