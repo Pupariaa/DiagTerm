@@ -63,9 +63,7 @@
       "publisherName": "Techalchemy",
       "signingHashAlgorithms": [
         "sha256"
-      ],
-      "certificateFile": "${CSC_LINK}",
-      "certificatePassword": "${CSC_KEY_PASSWORD}"
+      ]
     },
     "linux": {
       "target": [
