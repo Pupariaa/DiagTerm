@@ -18,6 +18,14 @@ document.getElementById('newTab').addEventListener('click', createNewTab);
 document.getElementById('flashMenu').addEventListener('click', openFlashModal);
 document.getElementById('aboutMenu').addEventListener('click', openAboutModal);
 
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAppVersion();
+    });
+} else {
+    loadAppVersion();
+}
+
 if (window.electronAPI) {
     document.getElementById('window-minimize').addEventListener('click', () => {
         window.electronAPI.windowMinimize();
@@ -45,6 +53,86 @@ if (window.electronAPI) {
                 updateTabStatus(tab.id);
                 if (activeTabId === tab.id) {
                     renderTabContent(tab.id);
+                }
+            }
+        });
+    }
+
+    if (window.electronAPI.onPortDisconnected) {
+        window.electronAPI.onPortDisconnected((portPath) => {
+            const tab = tabs.find(t => t.portPath === portPath);
+            if (tab) {
+                tab.isOpen = false;
+                updateTabStatus(tab.id);
+                if (activeTabId === tab.id) {
+                    renderTabContent(tab.id);
+                }
+            }
+        });
+    }
+
+    if (window.electronAPI.onPortReconnected) {
+        window.electronAPI.onPortReconnected((portPath) => {
+            const tab = tabs.find(t => t.portPath === portPath);
+            if (tab) {
+                tab.isOpen = true;
+                updateTabStatus(tab.id);
+                if (activeTabId === tab.id) {
+                    renderTabContent(tab.id);
+                }
+            }
+        });
+    }
+
+    if (window.electronAPI.onPortError) {
+        window.electronAPI.onPortError((portPath, error) => {
+            console.error(`Port ${portPath} error:`, error);
+            const tab = tabs.find(t => t.portPath === portPath);
+            if (tab && activeTabId === tab.id) {
+                const terminal = document.getElementById(`terminal-${tab.id}`);
+                if (terminal) {
+                    const errorMsg = `[ERROR] ${error}\n`;
+                    tab.content += errorMsg;
+                    if (!tab.contentLines) {
+                        tab.contentLines = [];
+                    }
+                    const timestamp = new Date();
+                    tab.contentLines.push({
+                        type: 'RX',
+                        text: errorMsg,
+                        timestamp: timestamp.getTime(),
+                        timestampStr: timestamp.toISOString()
+                    });
+                    updateTerminalDisplay(tab.id);
+                }
+            }
+        });
+    }
+
+    if (window.electronAPI.onPortClosed) {
+        window.electronAPI.onPortClosed((portPath) => {
+            const tab = tabs.find(t => t.portPath === portPath);
+            if (tab) {
+                tab.isOpen = false;
+                updateTabStatus(tab.id);
+                if (activeTabId === tab.id) {
+                    renderTabContent(tab.id);
+                    const terminal = document.getElementById(`terminal-${tab.id}`);
+                    if (terminal) {
+                        const closedMsg = `[PORT CLOSED] Port ${portPath} has been closed\n`;
+                        tab.content += closedMsg;
+                        if (!tab.contentLines) {
+                            tab.contentLines = [];
+                        }
+                        const timestamp = new Date();
+                        tab.contentLines.push({
+                            type: 'RX',
+                            text: closedMsg,
+                            timestamp: timestamp.getTime(),
+                            timestampStr: timestamp.toISOString()
+                        });
+                        updateTerminalDisplay(tab.id);
+                    }
                 }
             }
         });
@@ -317,10 +405,16 @@ function renderTabContent(tabId) {
                     </span>
                 </div>
                 <div class="control-group">
-                    ${tab.isOpen
-            ? `<button class="btn" onclick="closePort(${tabId})">Close Port</button>`
-            : `<button class="btn" onclick="openPort(${tabId})">Open Port</button>`
-        }
+                    ${tab.isOpen 
+                        ? `<button class="btn" onclick="closePort(${tabId})">Close Port</button>`
+                        : `<button class="btn" onclick="openPort(${tabId})">Open Port</button>`
+                    }
+                </div>
+                <div class="control-group">
+                    ${tab.isOpen 
+                        ? `<button class="btn" onclick="resetPort(${tabId})">Reset</button>`
+                        : ''
+                    }
                 </div>
             </div>
             <div style="padding: 8px 12px; background: #252526; border-bottom: 1px solid #3e3e42; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -472,8 +566,40 @@ function toggleAutoScroll(tabId, enabled) {
 function changeLineEnding(tabId, lineEnding) {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
-
+    
     tab.lineEnding = lineEnding;
+}
+
+async function resetPort(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab || !tab.isOpen || !tab.portPath || !window.electronAPI) return;
+    
+    try {
+        const result = await window.electronAPI.resetPort(tab.portPath);
+        if (result.success) {
+            const terminal = document.getElementById(`terminal-${tab.id}`);
+            if (terminal) {
+                const resetMsg = `[RESET] Reset signal sent\n`;
+                tab.content += resetMsg;
+                if (!tab.contentLines) {
+                    tab.contentLines = [];
+                }
+                const timestamp = new Date();
+                tab.contentLines.push({
+                    type: 'TX',
+                    text: resetMsg,
+                    timestamp: timestamp.getTime(),
+                    timestampStr: timestamp.toISOString()
+                });
+                updateTerminalDisplay(tab.id);
+            }
+        } else {
+            alert(`Error sending reset: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('Error resetting port:', error);
+        alert(`Error resetting port: ${error.message}`);
+    }
 }
 
 async function openPort(tabId) {
@@ -484,40 +610,20 @@ async function openPort(tabId) {
         const checkResult = await window.electronAPI.checkPortOpen(tab.portPath);
         if (checkResult.isOpen) {
             tab.isOpen = true;
-            const statusIndicator = document.querySelector(`#mainContent .status-indicator`);
-            const closeButton = document.querySelector(`#mainContent .control-group:last-child button`);
-
-            if (statusIndicator) {
-                statusIndicator.className = 'status-indicator open';
-                statusIndicator.textContent = 'Open';
-            }
-
-            if (closeButton) {
-                closeButton.textContent = 'Close Port';
-                closeButton.onclick = () => closePort(tabId);
-            }
-
             updateTabStatus(tabId);
+            if (activeTabId === tabId) {
+                renderTabContent(tabId);
+            }
             return;
         }
 
         const result = await window.electronAPI.openPort(tab.portPath, tab.baudRate);
         if (result.success) {
             tab.isOpen = true;
-            const statusIndicator = document.querySelector(`#mainContent .status-indicator`);
-            const closeButton = document.querySelector(`#mainContent .control-group:last-child button`);
-
-            if (statusIndicator) {
-                statusIndicator.className = 'status-indicator open';
-                statusIndicator.textContent = 'Open';
-            }
-
-            if (closeButton) {
-                closeButton.textContent = 'Close Port';
-                closeButton.onclick = () => closePort(tabId);
-            }
-
             updateTabStatus(tabId);
+            if (activeTabId === tabId) {
+                renderTabContent(tabId);
+            }
         } else {
             alert(`Error opening port: ${result.error}`);
         }
@@ -529,26 +635,16 @@ async function openPort(tabId) {
 
 async function closePort(tabId) {
     const tab = tabs.find(t => t.id === tabId);
-    if (!tab || !tab.isOpen || !window.electronAPI) return Promise.resolve();
+    if (!tab || !window.electronAPI) return Promise.resolve();
 
     try {
         const result = await window.electronAPI.closePort(tab.portPath);
         if (result.success) {
             tab.isOpen = false;
-            const statusIndicator = document.querySelector(`#mainContent .status-indicator`);
-            const openButton = document.querySelector(`#mainContent .control-group:last-child button`);
-
-            if (statusIndicator) {
-                statusIndicator.className = 'status-indicator closed';
-                statusIndicator.textContent = 'Closed';
-            }
-
-            if (openButton) {
-                openButton.textContent = 'Open Port';
-                openButton.onclick = () => openPort(tabId);
-            }
-
             updateTabStatus(tabId);
+            if (activeTabId === tabId) {
+                renderTabContent(tabId);
+            }
         } else {
             alert(`Error closing port: ${result.error}`);
         }
@@ -1455,8 +1551,8 @@ function openFlashModal() {
     closeBtn.style.display = 'none';
     logsContent.textContent = '';
 
-    updateFlashModalPorts();
     updateFlashDevboardOptions();
+    updateFlashModalPorts();
     flashModalFile = null;
     document.getElementById('flash-file-path').value = 'No file selected';
 }
@@ -1476,20 +1572,55 @@ function updateFlashModalPorts() {
         return;
     }
 
+    const deviceType = document.getElementById('flash-device-type').value;
+    const devboard = document.getElementById('flash-devboard').value;
+    const defaultUsbConverter = getDefaultUSBConverter(devboard);
+    const globalUsbConverter = document.getElementById('flash-usb-converter')?.value || defaultUsbConverter;
+    const usbConverters = ['CP2102', 'CP2104', 'CH340', 'CH341', 'FT232', 'FT2232', 'PL2303', 'ATmega16U2', 'ATmega32U4'];
+
     ports.forEach(port => {
         const portDiv = document.createElement('div');
-        portDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 4px 0;';
+        portDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #3e3e42; border-radius: 3px; margin-bottom: 8px; background: #1e1e1e;';
+        
+        const leftSection = document.createElement('div');
+        leftSection.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1;';
+        
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `flash-port-${port.path}`;
         checkbox.value = port.path;
         checkbox.style.cssText = 'cursor: pointer;';
+        
         const label = document.createElement('label');
         label.htmlFor = `flash-port-${port.path}`;
         label.textContent = port.path + (port.manufacturer ? ` (${port.manufacturer})` : '');
-        label.style.cssText = 'cursor: pointer; color: #cccccc; flex: 1;';
-        portDiv.appendChild(checkbox);
-        portDiv.appendChild(label);
+        label.style.cssText = 'cursor: pointer; color: #cccccc; min-width: 150px;';
+        
+        leftSection.appendChild(checkbox);
+        leftSection.appendChild(label);
+        
+        const usbSelect = document.createElement('select');
+        usbSelect.id = `flash-usb-${port.path}`;
+        usbSelect.style.cssText = 'padding: 4px 8px; background: #3c3c3c; border: 1px solid #3e3e42; color: #cccccc; border-radius: 3px; font-size: 12px; min-width: 120px;';
+        usbConverters.forEach(converter => {
+            const option = document.createElement('option');
+            option.value = converter;
+            option.textContent = converter;
+            if (converter === defaultUsbConverter && defaultUsbConverter === globalUsbConverter) {
+                option.selected = true;
+            }
+            usbSelect.appendChild(option);
+        });
+        const defaultOption = document.createElement('option');
+        defaultOption.value = 'Generic';
+        defaultOption.textContent = 'Default';
+        if (defaultUsbConverter !== globalUsbConverter) {
+            defaultOption.selected = true;
+        }
+        usbSelect.appendChild(defaultOption);
+        
+        portDiv.appendChild(leftSection);
+        portDiv.appendChild(usbSelect);
         portsList.appendChild(portDiv);
     });
 }
@@ -1568,10 +1699,13 @@ function updateFlashDevboardOptions() {
         flashModalConfig.devboard = devboardSelect.value;
         flashModalConfig.usbConverter = getDefaultUSBConverter(devboardSelect.value);
         usbSelect.value = flashModalConfig.usbConverter;
+        updateFlashModalPorts();
+        updateFlashModalPorts();
     };
 
     usbSelect.onchange = () => {
         flashModalConfig.usbConverter = usbSelect.value;
+        updateFlashModalPorts();
     };
 
     flashModalConfig.usbConverter = getDefaultUSBConverter(devboardSelect.value);
@@ -1644,7 +1778,12 @@ async function startMultiFlash() {
         const portResult = { port: portPath, success: false, output: '', error: '' };
 
         try {
-            allLogs += `\n[${portPath}] Starting flash...\n`;
+            let portUsbConverter = document.getElementById(`flash-usb-${portPath}`)?.value || flashModalConfig.usbConverter;
+            if (portUsbConverter === 'Generic') {
+                portUsbConverter = flashModalConfig.usbConverter;
+            }
+            
+            allLogs += `\n[${portPath}] Starting flash (USB-Serial: ${portUsbConverter})...\n`;
             logsContent.textContent = allLogs;
             logsContent.scrollTop = logsContent.scrollHeight;
 
@@ -1653,7 +1792,7 @@ async function startMultiFlash() {
                 flashModalFile,
                 flashModalConfig.deviceType,
                 flashModalConfig.devboard,
-                flashModalConfig.usbConverter,
+                portUsbConverter,
                 flashModalConfig.flashAddress,
                 115200
             );
@@ -1913,6 +2052,30 @@ function convertToLaTeX(lines) {
     return tex;
 }
 
+let appVersion = '0.1.0';
+
+async function loadAppVersion() {
+    try {
+        if (window.electronAPI && window.electronAPI.getAppVersion) {
+            const versionInfo = await window.electronAPI.getAppVersion();
+            if (versionInfo && versionInfo.version) {
+                appVersion = versionInfo.version;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading app version:', error);
+    }
+    
+    const titleElement = document.getElementById('app-version-title');
+    if (titleElement) {
+        titleElement.textContent = `DiagTerm V${appVersion}`;
+    }
+    const aboutElement = document.getElementById('app-version-about');
+    if (aboutElement) {
+        aboutElement.textContent = `Version ${appVersion}`;
+    }
+}
+
 function openAboutModal() {
     document.getElementById('aboutModal').style.display = 'flex';
 }
@@ -1920,6 +2083,184 @@ function openAboutModal() {
 function closeAboutModal() {
     document.getElementById('aboutModal').style.display = 'none';
 }
+
+let updateInfo = null;
+
+async function checkForUpdates() {
+    if (!window.electronAPI || !window.electronAPI.checkForUpdates) {
+        alert('Update system not available');
+        return;
+    }
+
+    const checkBtn = event?.target || document.querySelector('#aboutModal button[onclick="checkForUpdates()"]');
+    if (checkBtn) {
+        checkBtn.disabled = true;
+        checkBtn.textContent = 'Checking...';
+    }
+
+    try {
+        const result = await window.electronAPI.checkForUpdates();
+        if (!result.success) {
+            alert(`Error checking for updates: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Error checking for updates: ${error.message}`);
+    } finally {
+        if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = 'Check for Updates';
+        }
+    }
+}
+
+async function downloadUpdate() {
+    if (!window.electronAPI || !window.electronAPI.downloadUpdate) {
+        alert('Update system not available');
+        return;
+    }
+
+    const downloadBtn = document.getElementById('update-download-btn');
+    if (downloadBtn) {
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'Downloading...';
+    }
+
+    const progressContainer = document.getElementById('update-progress-container');
+    if (progressContainer) {
+        progressContainer.style.display = 'block';
+    }
+
+    try {
+        const result = await window.electronAPI.downloadUpdate();
+        if (!result.success) {
+            alert(`Error downloading update: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Error downloading update: ${error.message}`);
+    }
+}
+
+async function installUpdate() {
+    if (!window.electronAPI || !window.electronAPI.installUpdate) {
+        alert('Update system not available');
+        return;
+    }
+
+    try {
+        await window.electronAPI.installUpdate();
+    } catch (error) {
+        alert(`Error installing update: ${error.message}`);
+    }
+}
+
+function openUpdateModal() {
+    document.getElementById('updateModal').style.display = 'flex';
+}
+
+function closeUpdateModal() {
+    document.getElementById('updateModal').style.display = 'none';
+    updateInfo = null;
+    const progressContainer = document.getElementById('update-progress-container');
+    if (progressContainer) {
+        progressContainer.style.display = 'none';
+    }
+    const progressBar = document.getElementById('update-progress-bar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+    }
+    const progressPercent = document.getElementById('update-progress-percent');
+    if (progressPercent) {
+        progressPercent.textContent = '0%';
+    }
+}
+
+if (window.electronAPI) {
+    if (window.electronAPI.onUpdateChecking) {
+        window.electronAPI.onUpdateChecking(() => {
+            const messageEl = document.getElementById('update-message');
+            if (messageEl) {
+                messageEl.textContent = 'Checking for updates...';
+            }
+            openUpdateModal();
+        });
+    }
+
+    if (window.electronAPI.onUpdateAvailable) {
+        window.electronAPI.onUpdateAvailable((info) => {
+            updateInfo = info;
+            const titleEl = document.getElementById('update-modal-title');
+            const messageEl = document.getElementById('update-message');
+            const downloadBtn = document.getElementById('update-download-btn');
+            const releaseNotesEl = document.getElementById('update-release-notes');
+            const releaseNotesContentEl = document.getElementById('update-release-notes-content');
+
+            if (titleEl) {
+                titleEl.textContent = 'Update Available';
+            }
+            if (messageEl) {
+                messageEl.textContent = `A new version (${info.version}) is available. Your current version is ${appVersion}.`;
+            }
+            if (downloadBtn) {
+                downloadBtn.style.display = 'inline-block';
+            }
+            if (info.releaseNotes && releaseNotesEl && releaseNotesContentEl) {
+                releaseNotesEl.style.display = 'block';
+                releaseNotesContentEl.textContent = info.releaseNotes;
+            }
+            openUpdateModal();
+        });
+    }
+
+    if (window.electronAPI.onUpdateNotAvailable) {
+        window.electronAPI.onUpdateNotAvailable((info) => {
+            alert(`You are running the latest version (${appVersion}).`);
+        });
+    }
+
+    if (window.electronAPI.onUpdateError) {
+        window.electronAPI.onUpdateError((error) => {
+            alert(`Update error: ${error.message}`);
+            closeUpdateModal();
+        });
+    }
+
+    if (window.electronAPI.onUpdateDownloadProgress) {
+        window.electronAPI.onUpdateDownloadProgress((progress) => {
+            const progressBar = document.getElementById('update-progress-bar');
+            const progressPercent = document.getElementById('update-progress-percent');
+            if (progressBar) {
+                progressBar.style.width = `${progress.percent}%`;
+            }
+            if (progressPercent) {
+                progressPercent.textContent = `${Math.round(progress.percent)}%`;
+            }
+        });
+    }
+
+    if (window.electronAPI.onUpdateDownloaded) {
+        window.electronAPI.onUpdateDownloaded((info) => {
+            const messageEl = document.getElementById('update-message');
+            const downloadBtn = document.getElementById('update-download-btn');
+            const installBtn = document.getElementById('update-install-btn');
+            const progressContainer = document.getElementById('update-progress-container');
+
+            if (messageEl) {
+                messageEl.textContent = `Update ${info.version} downloaded successfully. Click "Install and Restart" to apply the update.`;
+            }
+            if (downloadBtn) {
+                downloadBtn.style.display = 'none';
+            }
+            if (installBtn) {
+                installBtn.style.display = 'inline-block';
+            }
+            if (progressContainer) {
+                progressContainer.style.display = 'none';
+            }
+        });
+    }
+}
+
+loadAppVersion();
 
 let messageTemplates = JSON.parse(localStorage.getItem('diagterm_templates') || '[]');
 let alertPatterns = JSON.parse(localStorage.getItem('diagterm_alert_patterns') || '[]');
