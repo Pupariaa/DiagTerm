@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiagTerm</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="top-bar">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="refreshPorts" class="btn">Refresh Ports</button>
+                <button id="newTab" class="btn btn-primary">+ New Tab</button>
+                <button id="flashMenu" class="btn">Flash</button>
+                <button id="aboutMenu" class="btn">About</button>
+            </div>
+            <div class="top-bar-title">DiagTerm V0.1.0</div>
+            <div class="window-controls">
+                <button id="window-minimize" class="window-control-btn" title="Minimize">−</button>
+                <button id="window-maximize" class="window-control-btn" title="Maximize">□</button>
+                <button id="window-close" class="window-control-btn window-close-btn" title="Close">×</button>
+            </div>
+        </div>
+
+        <div class="tabs-container" id="tabsContainer"></div>
+
+        <div class="main-content" id="mainContent">
+            <div class="empty-state">
+                <p>No tabs open. Click '+ New Tab' to create one.</p>
+            </div>
+        </div>
+
+        <div class="timeline-container" id="timelineContainer" style="display: none;">
+            <div class="timeline-header">
+                <span class="timeline-label rx">RX</span>
+                <span class="timeline-label tx">TX</span>
+            </div>
+            <canvas id="timelineCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="contextMenu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" onclick="analyzeMessage()">Analyze Message</div>
+    </div>
+
+    <div id="analysisModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Message Analysis</h2>
+                <span class="modal-close" onclick="closeAnalysisModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="analysisContent"></div>
+        </div>
+    </div>
+
+    <div id="exportModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h2>Export Logs</h2>
+                <span class="modal-close" onclick="closeExportModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Export Format:</label>
+                    <select id="export-format"
+                        style="width: 100%; padding: 8px; background: #3c3c3c; border: 1px solid #3e3e42; color: #cccccc; border-radius: 3px; font-size: 13px;">
+                        <option value="csv">Excel CSV</option>
+                        <option value="txt">Delimited Text (Tab)</option>
+                        <option value="html">HTML Table</option>
+                        <option value="xml">XML</option>
+                        <option value="json">JSON</option>
+                        <option value="md">Markdown</option>
+                        <option value="tex">LaTeX</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn" onclick="closeExportModal()">Cancel</button>
+                    <button class="btn btn-primary" id="export-confirm-btn" onclick="confirmExport()">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h2>About DiagTerm</h2>
+                <span class="modal-close" onclick="closeAboutModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 24px; text-align: center;">
+                <h1 style="color: #4ec9b0; margin-bottom: 8px; font-size: 28px;">DiagTerm</h1>
+                <p style="color: #858585; margin-bottom: 24px; font-size: 14px;">Version 0.1.0</p>
+                <div style="text-align: left; margin-bottom: 24px;">
+                    <p style="color: #d4d4d4; margin-bottom: 12px; line-height: 1.6;">
+                        DiagTerm is a graphical UART terminal application for debugging and monitoring serial
+                        communication.
+                    </p>
+                    <p style="color: #d4d4d4; margin-bottom: 12px; line-height: 1.6;">
+                        Features:
+                    </p>
+                    <ul style="color: #d4d4d4; margin-left: 20px; line-height: 1.8;">
+                        <li>Multi-tab serial terminal interface</li>
+                        <li>Real-time RX/TX timeline visualization</li>
+                        <li>Binary flashing for ESP32, ESP8266, and Arduino</li>
+                        <li>Multi-port simultaneous flashing</li>
+                        <li>Log export in multiple formats</li>
+                        <li>Message analysis and topology detection</li>
+                    </ul>
+                </div>
+                <div style="border-top: 1px solid #3e3e42; padding-top: 16px;">
+                    <p style="color: #858585; font-size: 12px; margin-bottom: 4px;">Built with Electron</p>
+                    <p style="color: #858585; font-size: 12px;">© 2025 Techalchemy</p>
+                </div>
+            </div>
+            <div
+                style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeAboutModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="flashModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1000px; width: 90%; max-height: 90vh;">
+            <div class="modal-header">
+                <h2 id="flash-modal-title">Flash Binary</h2>
+                <span class="modal-close" onclick="closeFlashModal()">&times;</span>
+            </div>
+            <div id="flash-config-view" style="display: flex; flex-direction: column; height: calc(90vh - 60px);">
+                <div class="modal-body" id="flashModalContent" style="padding: 16px; flex: 1; overflow-y: auto;">
+                    <div style="margin-bottom: 16px;">
+                        <div class="control-group" style="margin-bottom: 12px;">
+                            <label style="min-width: 120px;">Device Type:</label>
+                            <select id="flash-device-type" onchange="updateFlashDevboardOptions()">
+                                <option value="ESP32">ESP32</option>
+                                <option value="ESP8266">ESP8266</option>
+                                <option value="Arduino">Arduino</option>
+                            </select>
+                        </div>
+                        <div class="control-group" style="margin-bottom: 12px;">
+                            <label style="min-width: 120px;">Devboard:</label>
+                            <select id="flash-devboard">
+                            </select>
+                        </div>
+                        <div class="control-group" style="margin-bottom: 12px;">
+                            <label style="min-width: 120px;">USB-Serial:</label>
+                            <select id="flash-usb-converter">
+                            </select>
+                        </div>
+                        <div class="control-group" style="margin-bottom: 12px;">
+                            <label style="min-width: 120px;">Flash Address:</label>
+                            <input type="text" id="flash-address" value="0x10000" placeholder="0x10000"
+                                style="width: 120px;">
+                        </div>
+                        <div class="control-group" style="margin-bottom: 12px;">
+                            <label style="min-width: 120px;">Binary File:</label>
+                            <input type="text" id="flash-file-path" readonly value="No file selected"
+                                style="flex: 1; background: #3c3c3c; border: 1px solid #3e3e42; color: #cccccc; padding: 4px 8px; border-radius: 3px; font-size: 13px;">
+                            <button class="btn" onclick="selectFlashFileForModal()" style="margin-left: 8px;">Select
+                                File</button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Ports (multiple
+                            selection):</label>
+                        <div id="flash-ports-list"
+                            style="max-height: 200px; overflow-y: auto; border: 1px solid #3e3e42; border-radius: 3px; padding: 8px; background: #252526;">
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn" onclick="closeFlashModal()">Cancel</button>
+                    <button class="btn btn-primary" id="flash-start-btn" onclick="startMultiFlash()">Start
+                        Flash</button>
+                </div>
+            </div>
+            <div id="flash-logs-view" style="display: none; flex-direction: column; height: calc(90vh - 60px);">
+                <div class="modal-body"
+                    style="padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column;">
+                    <div id="flash-logs-content"
+                        style="flex: 1; overflow-y: auto; border: 1px solid #3e3e42; border-radius: 3px; padding: 12px; background: #1e1e1e; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; white-space: pre-wrap; word-wrap: break-word; color: #d4d4d4;">
+                    </div>
+                </div>
+                <div
+                    style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn" id="flash-close-btn" onclick="closeFlashModal()"
+                        style="display: none;">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="statisticsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px; width: 90%;">
+            <div class="modal-header">
+                <h2>Communication Statistics</h2>
+                <span class="modal-close" onclick="closeStatisticsModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="statisticsContent" style="padding: 16px;">
+            </div>
+            <div
+                style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeStatisticsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="templatesModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; width: 90%;">
+            <div class="modal-header">
+                <h2>Message Templates</h2>
+                <span class="modal-close" onclick="closeTemplatesModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div style="margin-bottom: 16px;">
+                    <button class="btn" onclick="addTemplate()">Add Template</button>
+                </div>
+                <div id="templates-list" style="max-height: 400px; overflow-y: auto;">
+                </div>
+            </div>
+            <div
+                style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeTemplatesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; width: 90%;">
+            <div class="modal-header">
+                <h2>Alerts Configuration</h2>
+                <span class="modal-close" onclick="closeAlertsModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div style="margin-bottom: 16px;">
+                    <button class="btn" onclick="addAlertPattern()">Add Alert Pattern</button>
+                </div>
+                <div id="alerts-list" style="max-height: 400px; overflow-y: auto;">
+                </div>
+            </div>
+            <div
+                style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeAlertsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="compareModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; width: 90%; max-height: 90vh;">
+            <div class="modal-header">
+                <h2>Compare Logs</h2>
+                <span class="modal-close" onclick="closeCompareModal()">&times;</span>
+            </div>
+            <div class="modal-body"
+                style="padding: 16px; display: flex; flex-direction: column; height: calc(90vh - 120px);">
+                <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 8px;">Source 1 (Current Tab):</label>
+                        <div id="compare-source1"
+                            style="height: 200px; overflow-y: auto; border: 1px solid #3e3e42; padding: 8px; background: #1e1e1e; font-family: monospace; font-size: 11px;">
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 8px;">Source 2 (Select File):</label>
+                        <button class="btn" onclick="selectCompareFile()" style="margin-bottom: 8px;">Select Log
+                            File</button>
+                        <div id="compare-source2"
+                            style="height: 200px; overflow-y: auto; border: 1px solid #3e3e42; padding: 8px; background: #1e1e1e; font-family: monospace; font-size: 11px;">
+                        </div>
+                    </div>
+                </div>
+                <div style="flex: 1; overflow-y: auto; border: 1px solid #3e3e42; padding: 12px; background: #1e1e1e; font-family: monospace; font-size: 11px;"
+                    id="compare-results">
+                </div>
+            </div>
+            <div
+                style="padding: 16px; border-top: 1px solid #3e3e42; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeCompareModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>
