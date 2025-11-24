@@ -2230,7 +2230,8 @@ if (window.electronAPI) {
 
     if (window.electronAPI.onUpdateError) {
         window.electronAPI.onUpdateError((error) => {
-            alert(`Update error: ${error.message}`);
+            const errorMessage = typeof error === 'string' ? error : (error?.message || error?.toString() || 'Unknown error');
+            alert(`Update error: ${errorMessage}`);
             closeUpdateModal();
         });
     }

@@ -387,7 +387,7 @@ function checkPortsStatus() {
 
 app.whenReady().then(() => {
     createWindow();
-    
+
     setTimeout(() => {
         console.log('Checking for updates on startup...');
         autoUpdater.checkForUpdates().catch(err => {
@@ -1077,8 +1077,9 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
     console.error('Error in auto-updater:', err);
+    const errorMessage = err ? (err.message || err.toString() || 'Unknown error') : 'Unknown error';
     if (mainWindow) {
-        mainWindow.webContents.send('update-error', err.message);
+        mainWindow.webContents.send('update-error', errorMessage);
     }
 });
 
