@@ -26,11 +26,12 @@ if (process.platform === 'win32') {
         'User-Agent': 'DiagTerm-Updater'
     };
     
-    if (!app.isPackaged) {
-        autoUpdater.forceDevUpdateConfig = true;
-    }
-    
+    autoUpdater.forceDevUpdateConfig = true;
     autoUpdater.verifySignatureAndInstall = false;
+    
+    if (autoUpdater.channel) {
+        autoUpdater.channel = null;
+    }
 }
 
 function createWindow() {
@@ -1098,17 +1099,15 @@ autoUpdater.on('error', (err) => {
     
     if (errorStr.includes('not signed') || errorStr.includes('signature') || 
         (errorObj.StatusMessage && errorObj.StatusMessage.includes('certificat'))) {
-        console.warn('⚠ Update file signature verification failed. This is expected with a self-signed certificate.');
-        console.warn('   The update is available but Windows requires manual approval.');
+        console.warn('⚠ Update file signature verification failed. Attempting to proceed anyway...');
         
-        if (mainWindow) {
-            const updateInfo = lastUpdateInfo || (err && err.version ? { version: err.version } : null);
+        if (mainWindow && lastUpdateInfo) {
+            console.log('Sending update-available event despite signature error');
+            mainWindow.webContents.send('update-available', lastUpdateInfo);
+        } else if (mainWindow) {
+            const updateInfo = err && err.version ? { version: err.version } : null;
             if (updateInfo) {
-                mainWindow.webContents.send('update-available', {
-                    ...updateInfo,
-                    requiresManualInstall: true,
-                    message: 'Update available (self-signed certificate - manual installation required)'
-                });
+                mainWindow.webContents.send('update-available', updateInfo);
             } else {
                 mainWindow.webContents.send('update-error', 
                     'Update available but requires manual installation due to self-signed certificate. ' +
