@@ -18,7 +18,14 @@ Work with multiple serial ports simultaneously. Each tab is independent, so you 
 
 ### RX/TX Timeline Visualization
 
-See your data flow in real-time with the timeline at the bottom of each tab. It shows when data is received (RX) and transmitted (TX), giving you a visual representation of the communication pattern. The timeline is always visible, even when there's no data yet.
+The timeline at the bottom of each tab provides a real-time graphical representation of bidirectional communication. It displays:
+
+- **RX signals** (received data) in one color
+- **TX signals** (transmitted data) in another color
+- **Temporal visualization** showing when data flows in each direction
+- **Always visible axes** even when no data has been transmitted yet
+
+This visual feedback helps you understand the communication pattern at a glance. You can see if your device is responding, how frequently data is exchanged, and identify communication issues like timeouts or unexpected delays. The timeline updates in real-time as data flows, making it easy to debug protocol implementations or verify that your commands are being processed correctly.
 
 ### Binary Flashing
 
@@ -183,13 +190,26 @@ Right-click on any message in the terminal to open the analysis dialog. This giv
 
 ## Keyboard Shortcuts
 
-- `Ctrl+F` / `Cmd+F`: Focus search bar
-- `Ctrl+N` / `Cmd+N`: New tab
-- `Ctrl+W` / `Cmd+W`: Close current tab
-- `Ctrl+E` / `Cmd+E`: Export logs
-- `Ctrl+K` / `Cmd+K`: Clear terminal
-- `↑`: Recall previous message
-- `Escape`: Close modals
+DiagTerm supports keyboard shortcuts to speed up your workflow. Use `Ctrl` on Windows/Linux or `Cmd` on macOS:
+
+### Global Shortcuts
+
+- `Ctrl+F` / `Cmd+F`: Focus the search bar to filter terminal content
+- `Ctrl+N` / `Cmd+N`: Create a new terminal tab
+- `Ctrl+W` / `Cmd+W`: Close the currently active tab
+- `Ctrl+E` / `Cmd+E`: Open the export dialog
+- `Ctrl+K` / `Cmd+K`: Clear the terminal content in the active tab
+- `Escape`: Close any open modal dialog
+
+### Input Field Shortcuts
+
+When typing in the "Send" input field:
+
+- `Enter`: Send the message
+- `↑` (Up Arrow): Recall the previous message from history
+- `↓` (Down Arrow): Navigate forward through message history
+
+These shortcuts work contextually - for example, `Ctrl+K` only clears the terminal of the tab you're currently viewing, and the arrow keys for message history only work when the send input field is focused.
 
 ## Requirements
 
