@@ -1,22 +1,106 @@
 {
   "name": "diagterm",
-  "version": "1.0.0",
+  "version": "0.1.2",
   "description": "UART Terminal with RX/TX Timeline",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "rebuild": "electron-rebuild -f -w serialport"
+    "rebuild": "electron-rebuild -f -w serialport",
+    "build": "node scripts/build.js",
+    "build:bugfix": "node scripts/build.js --bugfix",
+    "build:release": "node scripts/build.js --release",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --win --linux --mac",
+    "deploy": "node scripts/deploy.js",
+    "deploy:bugfix": "node scripts/deploy.js --bugfix",
+    "deploy:release": "node scripts/deploy.js --release",
+    "deploy:win": "node scripts/deploy.js --win",
+    "deploy:all": "node scripts/deploy.js --all"
   },
-  "keywords": ["uart", "serial", "terminal"],
-  "author": "",
+  "keywords": [
+    "uart",
+    "serial",
+    "terminal"
+  ],
+  "author": "Techalchemy",
   "license": "MIT",
-  "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-rebuild": "^3.2.9"
-  },
   "dependencies": {
     "serialport": "^12.0.0",
-    "@serialport/parser-readline": "^12.0.0"
+    "@serialport/parser-readline": "^12.0.0",
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-rebuild": "^3.2.9",
+    "electron-builder": "^24.9.1",
+    "basic-ftp": "^5.0.3",
+    "js-yaml": "^4.1.0"
+  },
+  "build": {
+    "appId": "com.techalchemy.diagterm",
+    "productName": "DiagTerm",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "src/icons/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/icons/diagTerm-256-bgt.ico",
+      "publisherName": "Techalchemy"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/icons",
+      "category": "Development"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "src/icons/diagTerm-512-bgt.png",
+      "category": "public.app-category.developer-tools"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://techalchemy.fr/diagterm/update"
+    }
   }
 }
-
