@@ -1,6 +1,6 @@
 {
   "name": "diagterm",
-  "version": "0.1.9",
+  "version": "0.1.16",
   "description": "UART Terminal with RX/TX Timeline",
   "main": "src/main/main.js",
   "scripts": {
@@ -59,7 +59,11 @@
         }
       ],
       "icon": "src/icons/diagTerm-256-bgt.ico",
-      "publisherName": "Techalchemy"
+      "publisherName": "Techalchemy",
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "sign": "scripts/sign.js"
     },
     "linux": {
       "target": [
