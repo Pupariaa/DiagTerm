@@ -4,10 +4,22 @@ const fs = require('fs');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 const { spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 let openPorts = new Map();
+let portStates = new Map();
+let portCheckInterval = null;
 let esptoolInstalled = false;
 let esptoolInstalling = false;
+let mainWindow = null;
+
+autoUpdater.setFeedURL({
+    provider: 'generic',
+    url: 'https://techalchemy.fr/diagterm/update'
+});
+
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -16,6 +28,7 @@ function createWindow() {
         minWidth: 800,
         minHeight: 600,
         frame: false,
+        icon: path.join(__dirname, '../icons/diagTerm-256-bgt.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -24,6 +37,7 @@ function createWindow() {
     });
 
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
+    mainWindow = win;
     return win;
 }
 
@@ -39,6 +53,61 @@ ipcMain.handle('list-ports', async () => {
             vendorId: port.vendorId || '',
             productId: port.productId || ''
         }));
+
+        for (const portPath of portStates.keys()) {
+            const state = portStates.get(portPath);
+            if (state && state.wasOpen) {
+                const portExists = mappedPorts.some(p => p.path === portPath);
+                if (portExists && !openPorts.has(portPath)) {
+                    setTimeout(async () => {
+                        const allWindows = BrowserWindow.getAllWindows();
+                        if (allWindows.length > 0) {
+                            const win = allWindows[0];
+                            try {
+                                const port = new SerialPort({
+                                    path: portPath,
+                                    baudRate: state.baudRate,
+                                    autoOpen: false
+                                });
+
+                                port.open((err) => {
+                                    if (!err) {
+                                        const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+                                        openPorts.set(portPath, {
+                                            port,
+                                            parser,
+                                            baudRate: state.baudRate,
+                                            wasOpen: true
+                                        });
+
+                                        port.on('error', (error) => {
+                                            console.error(`Port ${portPath} error:`, error);
+                                            if (error.message.includes('disconnected') || error.message.includes('not found')) {
+                                                openPorts.delete(portPath);
+                                                win.webContents.send('port-disconnected', portPath);
+                                            }
+                                        });
+
+                                        port.on('close', () => {
+                                            openPorts.delete(portPath);
+                                            win.webContents.send('port-closed', portPath);
+                                        });
+
+                                        parser.on('data', (data) => {
+                                            win.webContents.send('port-data', portPath, 'RX', data.toString());
+                                        });
+
+                                        win.webContents.send('port-reconnected', portPath);
+                                    }
+                                });
+                            } catch (reconnectError) {
+                                console.error('Reconnect error:', reconnectError);
+                            }
+                        }
+                    }, 500);
+                }
+            }
+        }
 
         console.log('Mapped ports:', mappedPorts);
         return mappedPorts;
@@ -74,10 +143,46 @@ ipcMain.handle('open-port', async (event, portPath, baudRate) => {
 
                 const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
-                openPorts.set(portPath, {
+                const portInfo = {
                     port,
                     parser,
-                    baudRate: parseInt(baudRate)
+                    baudRate: parseInt(baudRate),
+                    wasOpen: true
+                };
+                
+                openPorts.set(portPath, portInfo);
+                portStates.set(portPath, {
+                    baudRate: parseInt(baudRate),
+                    wasOpen: true
+                });
+
+                port.on('error', (err) => {
+                    console.error(`Port ${portPath} error:`, err);
+                    const win = BrowserWindow.fromWebContents(event.sender);
+                    if (win) {
+                        win.webContents.send('port-error', portPath, err.message);
+                    }
+                    
+                    if (err.message.includes('disconnected') || err.message.includes('not found') || err.message.includes('Access denied') || err.message.includes('cannot open')) {
+                        openPorts.delete(portPath);
+                        const state = portStates.get(portPath);
+                        if (state) {
+                            state.wasOpen = true;
+                        }
+                        const win2 = BrowserWindow.fromWebContents(event.sender);
+                        if (win2) {
+                            win2.webContents.send('port-disconnected', portPath);
+                        }
+                    }
+                });
+
+                port.on('close', () => {
+                    console.log(`Port ${portPath} closed`);
+                    const win = BrowserWindow.fromWebContents(event.sender);
+                    if (win) {
+                        win.webContents.send('port-closed', portPath);
+                    }
+                    openPorts.delete(portPath);
                 });
 
                 parser.on('data', (data) => {
@@ -102,16 +207,61 @@ ipcMain.handle('close-port', async (event, portPath) => {
             return { success: false, error: 'Port not open' };
         }
 
-        return new Promise((resolve) => {
-            portData.port.close((err) => {
-                if (err) {
-                    resolve({ success: false, error: err.message });
-                    return;
-                }
+        const state = portStates.get(portPath);
+        if (state) {
+            state.wasOpen = false;
+        }
 
+        return new Promise((resolve) => {
+            try {
+                portData.port.close((err) => {
+                    if (err) {
+                        resolve({ success: false, error: err.message });
+                        return;
+                    }
+
+                    openPorts.delete(portPath);
+                    resolve({ success: true });
+                });
+            } catch (closeError) {
                 openPorts.delete(portPath);
                 resolve({ success: true });
-            });
+            }
+        });
+    } catch (error) {
+        openPorts.delete(portPath);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('reset-port', async (event, portPath) => {
+    try {
+        const portData = openPorts.get(portPath);
+        if (!portData) {
+            return { success: false, error: 'Port not open' };
+        }
+
+        return new Promise((resolve) => {
+            try {
+                portData.port.set({ dtr: false, rts: false }, (err) => {
+                    if (err) {
+                        resolve({ success: false, error: err.message });
+                        return;
+                    }
+                    
+                    setTimeout(() => {
+                        portData.port.set({ dtr: true, rts: true }, (err2) => {
+                            if (err2) {
+                                resolve({ success: false, error: err2.message });
+                                return;
+                            }
+                            resolve({ success: true });
+                        });
+                    }, 100);
+                });
+            } catch (error) {
+                resolve({ success: false, error: error.message });
+            }
         });
     } catch (error) {
         return { success: false, error: error.message };
@@ -126,26 +276,119 @@ ipcMain.handle('write-port', async (event, portPath, data) => {
         }
 
         return new Promise((resolve) => {
-            portData.port.write(data, (err) => {
-                if (err) {
-                    resolve({ success: false, error: err.message });
+            try {
+                if (!portData.port.isOpen) {
+                    openPorts.delete(portPath);
+                    const state = portStates.get(portPath);
+                    if (state) {
+                        state.wasOpen = true;
+                    }
+                    const win = BrowserWindow.fromWebContents(event.sender);
+                    if (win) {
+                        win.webContents.send('port-disconnected', portPath);
+                    }
+                    resolve({ success: false, error: 'Port not open' });
                     return;
                 }
 
-                const win = BrowserWindow.fromWebContents(event.sender);
-                if (win) {
-                    win.webContents.send('port-data', portPath, 'TX', data.toString());
+                portData.port.write(data, (err) => {
+                    if (err) {
+                        if (err.message && (err.message.includes('disconnected') || err.message.includes('not found') || err.message.includes('Access denied') || err.message.includes('cannot open'))) {
+                            openPorts.delete(portPath);
+                            const state = portStates.get(portPath);
+                            if (state) {
+                                state.wasOpen = true;
+                            }
+                            const win = BrowserWindow.fromWebContents(event.sender);
+                            if (win) {
+                                win.webContents.send('port-disconnected', portPath);
+                            }
+                        }
+                        resolve({ success: false, error: err.message });
+                        return;
+                    }
+
+                    const win = BrowserWindow.fromWebContents(event.sender);
+                    if (win) {
+                        win.webContents.send('port-data', portPath, 'TX', data.toString());
+                    }
+                    resolve({ success: true });
+                });
+            } catch (writeError) {
+                if (writeError.message && (writeError.message.includes('disconnected') || writeError.message.includes('not found') || writeError.message.includes('cannot open'))) {
+                    openPorts.delete(portPath);
+                    const state = portStates.get(portPath);
+                    if (state) {
+                        state.wasOpen = true;
+                    }
+                    const win = BrowserWindow.fromWebContents(event.sender);
+                    if (win) {
+                        win.webContents.send('port-disconnected', portPath);
+                    }
                 }
-                resolve({ success: true });
-            });
+                resolve({ success: false, error: writeError.message || 'Write error' });
+            }
         });
     } catch (error) {
         return { success: false, error: error.message };
     }
 });
 
+function checkPortsStatus() {
+    if (openPorts.size === 0) return;
+    
+    SerialPort.list().then(portList => {
+        const availablePaths = new Set(portList.map(p => p.path));
+        const allWindows = BrowserWindow.getAllWindows();
+        
+        for (const [portPath, portData] of openPorts.entries()) {
+            let isDisconnected = false;
+            
+            if (!availablePaths.has(portPath)) {
+                console.log(`Port ${portPath} not in available ports list`);
+                isDisconnected = true;
+            } else {
+                try {
+                    if (!portData.port.isOpen) {
+                        console.log(`Port ${portPath} is not open`);
+                        isDisconnected = true;
+                    }
+                } catch (checkError) {
+                    console.log(`Port ${portPath} check error:`, checkError.message);
+                    isDisconnected = true;
+                }
+            }
+            
+            if (isDisconnected) {
+                console.log(`Port ${portPath} disconnected or closed`);
+                try {
+                    if (portData.port && portData.port.isOpen) {
+                        portData.port.close(() => {});
+                    }
+                } catch (closeError) {
+                    console.error('Error closing port:', closeError);
+                }
+                
+                openPorts.delete(portPath);
+                const state = portStates.get(portPath);
+                if (state) {
+                    state.wasOpen = true;
+                }
+                
+                allWindows.forEach(win => {
+                    win.webContents.send('port-disconnected', portPath);
+                });
+            }
+        }
+    }).catch(err => {
+        console.error('Error checking ports:', err);
+    });
+}
+
 app.whenReady().then(() => {
     createWindow();
+    
+    portCheckInterval = setInterval(checkPortsStatus, 2000);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -799,7 +1042,15 @@ ipcMain.handle('window-close', (event) => {
     if (win) win.close();
 });
 
+ipcMain.handle('get-app-version', () => {
+    return { version: app.getVersion() };
+});
+
 app.on('window-all-closed', () => {
+    if (portCheckInterval) {
+        clearInterval(portCheckInterval);
+        portCheckInterval = null;
+    }
     if (process.platform !== 'darwin') {
         app.quit();
     }
