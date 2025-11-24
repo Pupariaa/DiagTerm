@@ -1073,8 +1073,11 @@ autoUpdater.on('checking-for-update', () => {
     }
 });
 
+let lastUpdateInfo = null;
+
 autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info);
+    lastUpdateInfo = info;
     if (mainWindow) {
         mainWindow.webContents.send('update-available', info);
     }
@@ -1098,13 +1101,15 @@ autoUpdater.on('error', (err) => {
         console.warn('⚠ Update file signature verification failed. This is expected with a self-signed certificate.');
         console.warn('   The update is available but Windows requires manual approval.');
         
-        if (mainWindow && err && err.version) {
-            mainWindow.webContents.send('update-available', {
-                version: err.version,
-                requiresManualInstall: true,
-                message: 'Update available (self-signed certificate - manual installation required)'
-            });
-        } else if (mainWindow) {
+        if (mainWindow) {
+            const updateInfo = lastUpdateInfo || (err && err.version ? { version: err.version } : null);
+            if (updateInfo) {
+                mainWindow.webContents.send('update-available', {
+                    ...updateInfo,
+                    requiresManualInstall: true,
+                    message: 'Update available (self-signed certificate - manual installation required)'
+                });
+            } else {
             mainWindow.webContents.send('update-error', 
                 'Update available but requires manual installation due to self-signed certificate. ' +
                 'Windows will show a security warning - click "More info" then "Run anyway" to install.');
