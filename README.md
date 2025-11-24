@@ -2,7 +2,9 @@
 
 A powerful UART terminal application for debugging and communicating with microcontrollers, with built-in binary flashing capabilities.
 
-![Main Interface](https://www.noelshack.com/2025-48-1-1763985957-s1.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763985957-s1.png" alt="Main Interface">
+</p>
 
 ## What is DiagTerm?
 
@@ -31,17 +33,25 @@ This visual feedback helps you understand the communication pattern at a glance.
 
 Flash firmware to your devices directly from the application. Supports ESP32, ESP8266, and Arduino boards with automatic bootloader mode entry.
 
-![Multi-Flash Dialog](https://www.noelshack.com/2025-48-1-1763985957-s3.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763985957-s3.png" alt="Multi-Flash Dialog">
+</p>
+
 
 The multi-flash feature lets you flash multiple devices at once. Each port can have its own USB-Serial converter selection, which is useful when working with different board generations.
 
-![Multi-Flash in Progress](https://www.noelshack.com/2025-48-1-1763985957-s4.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763985957-s4.png" alt="Multi-Flash in Progress">
+</p>
 
 ### Message Analysis
 
 Right-click on any message in the terminal to get a detailed analysis:
 
-![Message Analysis](https://www.noelshack.com/2025-48-1-1763986111-s9.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763986111-s9.png" alt="Message Analysis">
+</p>
+
 
 The analysis shows:
 - Raw content (exact bytes received)
@@ -56,7 +66,9 @@ The analysis shows:
 
 Compare two log files side by side to spot differences:
 
-![Log Comparison](https://www.noelshack.com/2025-48-1-1763985957-s2.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763985957-s2.png" alt="Log Comparison">
+</p>
 
 Useful for debugging communication issues or verifying firmware behavior across different versions.
 
@@ -80,7 +92,10 @@ Export your terminal data in multiple formats:
 - **Keyboard Shortcuts**: Work faster with hotkeys
 - **Line Ending Options**: Choose between None, LF, CR, or CRLF
 
-![Line Ending Options](https://www.noelshack.com/2025-48-1-1763986052-s8.png)
+
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763986052-s8.png" alt="Line Ending Options">
+</p>
 
 ## Supported Devices
 
@@ -123,7 +138,9 @@ The application supports various USB-Serial converters with automatic detection:
 - ATmega16U2 / ATmega32U4
 - Generic converters
 
-![Available Ports](https://www.noelshack.com/2025-48-1-1763986052-s7.png)
+<p align="center">
+  <img src="https://www.noelshack.com/2025-48-1-1763986052-s7.png" alt="Available Ports">
+</p>
 
 ## Installation
 
