@@ -16,3 +16,9 @@ certificates/
 out/
 .cache/
 scripts/
+certificates/
+*.pfx
+*.p12
+*.key
+*.crt
+.env
