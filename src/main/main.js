@@ -21,6 +21,16 @@ autoUpdater.setFeedURL({
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
+if (process.platform === 'win32') {
+    autoUpdater.requestHeaders = {
+        'User-Agent': 'DiagTerm-Updater'
+    };
+    
+    if (!app.isPackaged) {
+        autoUpdater.forceDevUpdateConfig = true;
+    }
+}
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 1400,
