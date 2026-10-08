@@ -1,158 +1,50 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
+
+const INVOKE_CHANNELS = new Set([
+    'settings:get-all', 'settings:set', 'settings:replace', 'settings:reset',
+    'store:get', 'store:set', 'app:paths',
+    'serial:list', 'serial:open', 'serial:close', 'serial:write', 'serial:set-signals', 'serial:reset',
+    'serial:update', 'serial:set-auto-reconnect', 'serial:status', 'serial:now',
+    'comnex:list', 'comnex:command',
+    'filesend:select', 'filesend:preview', 'filesend:start', 'filesend:control',
+    'bridge:start', 'bridge:stop', 'bridge:list',
+    'logger:set-port', 'logger:status', 'logger:folder',
+    'capture:save', 'capture:snapshot', 'capture:open',
+    'files:save-text', 'files:save-binary', 'files:select-file', 'files:select-folder', 'files:read-text',
+    'files:stat', 'files:list-dir', 'files:read-dir', 'files:open-path', 'files:show-item', 'files:copy-folder', 'files:open-external',
+    'get-app-version', 'check-for-updates', 'download-update', 'install-update',
+    'boards:catalog', 'boards:fetch-indexes', 'boards:install', 'boards:uninstall', 'boards:root', 'boards:update-now', 'boards:installed-tools',
+    'flash:boards', 'flash:describe-target', 'flash:detect-board', 'flash:programmers', 'flash:describe-input',
+    'flash:enqueue', 'flash:cancel', 'flash:cancel-all', 'flash:retry', 'flash:clear', 'flash:jobs', 'flash:job-log',
+    'flash:production-start', 'flash:production-stop', 'flash:production-state',
+    'flash:partitions-parse-csv', 'flash:partitions-to-csv', 'flash:partitions-validate', 'flash:partitions-to-binary', 'flash:partitions-parse-binary',
+    'window-minimize', 'window-maximize', 'window-close', 'app:confirm-close', 'app:toggle-devtools', 'app:reload'
+]);
+
+const EVENT_CHANNELS = new Set([
+    'settings:changed',
+    'serial:data', 'serial:state', 'serial:ports', 'serial:signals', 'serial:error',
+    'filesend:progress', 'bridge:state', 'logger:state',
+    'boards:progress', 'boards:changed', 'boards:auto-updated',
+    'flash:job', 'flash:log', 'flash:production',
+    'update-checking', 'update-available', 'update-not-available', 'update-error', 'update-download-progress', 'update-downloaded',
+    'window:maximized', 'app:close-requested'
+]);
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  listPorts: async () => {
-    return await ipcRenderer.invoke('list-ports');
-  },
-
-  checkPortOpen: async (path) => {
-    return await ipcRenderer.invoke('check-port-open', path);
-  },
-
-  openPort: async (path, baudRate) => {
-    return await ipcRenderer.invoke('open-port', path, baudRate);
-  },
-
-  closePort: async (path) => {
-    return await ipcRenderer.invoke('close-port', path);
-  },
-
-  writePort: async (path, data) => {
-    return await ipcRenderer.invoke('write-port', path, data);
-  },
-
-  onPortData: (callback) => {
-    ipcRenderer.on('port-data', (event, portPath, type, data) => {
-      callback(portPath, type, data);
-    });
-  },
-
-  selectBinaryFile: async () => {
-    return await ipcRenderer.invoke('select-binary-file');
-  },
-
-  flashBinary: async (portPath, filePath, deviceType, devboard, usbConverter, flashAddress, baudRate) => {
-    return await ipcRenderer.invoke('flash-binary', portPath, filePath, deviceType, devboard, usbConverter, flashAddress, baudRate);
-  },
-
-  onPortOpened: (callback) => {
-    ipcRenderer.on('port-opened', (event, portPath) => {
-      callback(portPath);
-    });
-  },
-
-  onFlashOutput: (callback) => {
-    ipcRenderer.on('flash-output', (event, data) => {
-      callback(data);
-    });
-  },
-
-  removeFlashOutputListener: () => {
-    ipcRenderer.removeAllListeners('flash-output');
-  },
-
-  windowMinimize: () => {
-    ipcRenderer.invoke('window-minimize');
-  },
-
-  windowMaximize: () => {
-    ipcRenderer.invoke('window-maximize');
-  },
-
-  windowClose: () => {
-    ipcRenderer.invoke('window-close');
-  },
-
-  exportLogs: async (content, format, defaultFileName) => {
-    return await ipcRenderer.invoke('export-logs', content, format, defaultFileName);
-  },
-
-  selectLogFile: async () => {
-    return await ipcRenderer.invoke('select-log-file');
-  },
-
-  readFile: async (filePath) => {
-    return await ipcRenderer.invoke('read-file', filePath);
-  },
-
-  resetPort: async (portPath) => {
-    return await ipcRenderer.invoke('reset-port', portPath);
-  },
-
-  onPortDisconnected: (callback) => {
-    ipcRenderer.on('port-disconnected', (event, portPath) => {
-      callback(portPath);
-    });
-  },
-
-  onPortReconnected: (callback) => {
-    ipcRenderer.on('port-reconnected', (event, portPath) => {
-      callback(portPath);
-    });
-  },
-
-  onPortError: (callback) => {
-    ipcRenderer.on('port-error', (event, portPath, error) => {
-      callback(portPath, error);
-    });
-  },
-
-  onPortClosed: (callback) => {
-    ipcRenderer.on('port-closed', (event, portPath) => {
-      callback(portPath);
-    });
-  },
-
-  checkForUpdates: async () => {
-    return await ipcRenderer.invoke('check-for-updates');
-  },
-
-  downloadUpdate: async () => {
-    return await ipcRenderer.invoke('download-update');
-  },
-
-  installUpdate: async () => {
-    return await ipcRenderer.invoke('install-update');
-  },
-
-  getAppVersion: async () => {
-    return await ipcRenderer.invoke('get-app-version');
-  },
-
-  onUpdateChecking: (callback) => {
-    ipcRenderer.on('update-checking', () => {
-      callback();
-    });
-  },
-
-  onUpdateAvailable: (callback) => {
-    ipcRenderer.on('update-available', (event, info) => {
-      callback(info);
-    });
-  },
-
-  onUpdateNotAvailable: (callback) => {
-    ipcRenderer.on('update-not-available', (event, info) => {
-      callback(info);
-    });
-  },
-
-  onUpdateError: (callback) => {
-    ipcRenderer.on('update-error', (event, error) => {
-      callback(error);
-    });
-  },
-
-  onUpdateDownloadProgress: (callback) => {
-    ipcRenderer.on('update-download-progress', (event, progress) => {
-      callback(progress);
-    });
-  },
-
-  onUpdateDownloaded: (callback) => {
-    ipcRenderer.on('update-downloaded', (event, info) => {
-      callback(info);
-    });
-  }
+    invoke: (channel, ...args) => {
+        if (!INVOKE_CHANNELS.has(channel)) return Promise.reject(new Error(`Channel not allowed: ${channel}`));
+        return ipcRenderer.invoke(channel, ...args);
+    },
+    on: (channel, callback) => {
+        if (!EVENT_CHANNELS.has(channel)) throw new Error(`Event not allowed: ${channel}`);
+        const listener = (event, ...args) => callback(...args);
+        ipcRenderer.on(channel, listener);
+        return () => ipcRenderer.removeListener(channel, listener);
+    },
+    setZoomFactor: (factor) => {
+        const value = Number(factor);
+        if (value >= 0.5 && value <= 3) webFrame.setZoomFactor(value);
+    },
+    platform: process.platform
 });
-
